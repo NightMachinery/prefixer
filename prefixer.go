@@ -30,11 +30,11 @@ Usage:
 Options:
   -a --add-prefix=<add-prefix>  Adds this prefix to the beginning of each record.
   -r --remove-prefix=<rm-prefix>  Removes this prefix from the beginning of each record.
-  -s --skip-empty  Skip empty records.
-  -i --input-sep=<isep>  Input separator.
-  -o --output-sep=<osep>  Input separator.
-  -l --location=<loc-file> Enables tracking the starting line number of each record, and prints those numbers to the supplied file (separated by newlines). Use /dev/null to just enable the tracking.
-  -h --help     Show this screen.`
+  -s --skip-empty  Skip empty records (after the removal of --remove-prefix).
+  -i --input-sep=<isep>  Input record separator.
+  -o --output-sep=<osep>  Output record separator.
+  -l --location=<loc-file>  Enables tracking the starting line number of each record, and prints those numbers to the supplied file (separated by newlines). Use /dev/null to just enable the tracking.
+  -h --help  Show this screen.`
 
 	debug := os.Getenv("DEBUGME") != ""
 	arguments, _ := docopt.ParseDoc(usage)

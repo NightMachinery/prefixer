@@ -1,5 +1,12 @@
 #+TITLE: Prefixer.go
 
+* Installation
+#+BEGIN_SRC
+go get -u -v github.com/NightMachinary/prefixer
+#+END_SRC
+
+* Usage
+** Manual
 #+BEGIN_SRC bash :results verbatim :exports both
 prefixer --help
 #+END_SRC
@@ -22,9 +29,141 @@ Usage:
 Options:
   -a --add-prefix=<add-prefix>  Adds this prefix to the beginning of each record.
   -r --remove-prefix=<rm-prefix>  Removes this prefix from the beginning of each record.
-  -s --skip-empty  Skip empty records.
-  -i --input-sep=<isep>  Input separator.
-  -o --output-sep=<osep>  Input separator.
-  -l --location=<loc-file> Enables tracking the starting line number of each record, and prints those numbers to the supplied file (separated by newlines). Use /dev/null to just enable the tracking.
-  -h --help     Show this screen.
+  -s --skip-empty  Skip empty records (after the removal of --remove-prefix).
+  -i --input-sep=<isep>  Input record separator.
+  -o --output-sep=<osep>  Output record separator.
+  -l --location=<loc-file>  Enables tracking the starting line number of each record, and prints those numbers to the supplied file (separated by newlines). Use /dev/null to just enable the tracking.
+  -h --help  Show this screen.
+#+end_example
+
+** Examples
+
+#+begin_src bash :results verbatim :exports both
+echo "Green Paint, Red Paint, Yellow Paint" | prefixer -i ", " -r "Green " -a "Cute "
+#+end_src
+
+#+RESULTS:
+: Cute Paint
+: Cute Red Paint
+: Cute Yellow Paint
+
+#+begin_src bash :results verbatim :exports both
+echo "Green Paint, Red Paint, Yellow Paint" | prefixer -i ", " -o $'\n---\n' -r "Green " -a "PREFIXER_LINENUMBER: Cute " -l /dev/null
+#+end_src
+
+#+RESULTS:
+: 1: Cute Paint
+: ---
+: 1: Cute Red Paint
+: ---
+: 1: Cute Yellow Paint
+
+#+begin_src bash :results verbatim :exports both
+echo "Green Paint
+
+Red Paint
+
+     Yellow Paint" | prefixer -i $'\n' -o $'\n' -r "Green " -a "PREFIXER_LINENUMBER: Cute " -l /dev/null
+#+end_src
+
+#+RESULTS:
+: 1: Cute Paint
+: 2: Cute
+: 3: Cute Red Paint
+: 4: Cute
+: 5: Cute      Yellow Paint
+: 6: Cute
+
+#+begin_src bash :results verbatim :exports both
+echo "Green Paint
+
+Red Paint
+
+     Yellow Paint" | prefixer --skip-empty -i $'\n' -o $'\n' -r "Green " -a "PREFIXER_LINENUMBER: Cute " -l /tmp/locationData
+#+end_src
+
+#+RESULTS:
+: 1: Cute Paint
+: 3: Cute Red Paint
+: 5: Cute      Yellow Paint
+
+#+begin_src bash :results verbatim :exports both
+cat /tmp/locationData
+#+end_src
+
+#+RESULTS:
+: 1
+: 3
+: 5
+
+*** Search and replace literal strings
+#+begin_src bash :results verbatim :exports both
+function replace() {
+    prefixer -i "$1" -o "$2"
+}
+replace wolf "cute rabbit" << "EOF"
+The wolf (Canis lupus[a]), also known as the gray wolf or grey wolf, is a large canine native to Eurasia and North America. More than thirty subspecies of Canis lupus have been recognized, and gray wolves, as colloquially understood, comprise non-domestic/feral subspecies.
+EOF
+#+end_src
+
+#+RESULTS:
+: The cute rabbit (Canis lupus[a]), also known as the gray cute rabbit or grey cute rabbit, is a large canine native to Eurasia and North America. More than thirty subspecies of Canis lupus have been recognized, and gray wolves, as colloquially understood, comprise non-domestic/feral subspecies.
+
+* Benchmarks
+
+
+#+begin_src bsh.dash :results verbatim :exports both
+hyperfine --warmup 10  "<$attic sd "$'\36'" H" "<$attic tr "$'\36'" H" "<$attic prefixer -s -i "$'\36'" -o 'H' "
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Benchmark #1: </Users/evar/cellar/attic//.darkattic sd  H
+  Time (mean ± σ):       4.4 ms ±   1.1 ms    [User: 1.5 ms, System: 1.7 ms]
+  Range (min … max):     3.5 ms …  16.9 ms    213 runs
+
+Benchmark #2: </Users/evar/cellar/attic//.darkattic tr  H
+  Time (mean ± σ):       4.8 ms ±   0.5 ms    [User: 2.8 ms, System: 1.8 ms]
+  Range (min … max):     4.0 ms …   7.8 ms    222 runs
+
+Benchmark #3: </Users/evar/cellar/attic//.darkattic prefixer -s -i  -o 'H'
+  Time (mean ± σ):       6.0 ms ±   0.5 ms    [User: 2.5 ms, System: 2.5 ms]
+  Range (min … max):     5.0 ms …   8.3 ms    194 runs
+
+Summary
+  '</Users/evar/cellar/attic//.darkattic sd  H' ran
+    1.09 ± 0.28 times faster than '</Users/evar/cellar/attic//.darkattic tr  H'
+    1.35 ± 0.34 times faster than '</Users/evar/cellar/attic//.darkattic prefixer -s -i  -o 'H' '
+
+  Warning: Command took less than 5 ms to complete. Results might be inaccurate.
+  Warning: Statistical outliers were detected. Consider re-running this benchmark on a quiet PC without any interferences from other programs. It might help to use the '--warmup' or '--prepare' options.
+
+  Warning: Command took less than 5 ms to complete. Results might be inaccurate.
+  Warning: Statistical outliers were detected. Consider re-running this benchmark on a quiet PC without any interferences from other programs. It might help to use the '--warmup' or '--prepare' options.
+
+  Warning: Command took less than 5 ms to complete. Results might be inaccurate.
+#+end_example
+
+#+begin_src bash :results verbatim :exports both
+hyperfine --warmup 5 "arrN {1..2000} | prefixer -r 12" "arrN {1..2000} | rmprefix 12 '' '\x00'" "arrN {1..2000} | prefixer -r 12 -a 'hi you ' -o '\x00' -l /dev/null"
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Benchmark #1: arrN {1..2000} | prefixer -r 12
+  Time (mean ± σ):       6.8 ms ±   0.7 ms    [User: 7.5 ms, System: 3.8 ms]
+  Range (min … max):     5.6 ms …  12.1 ms    187 runs
+
+Benchmark #2: arrN {1..2000} | rmprefix 12 '' '\x00'
+  Time (mean ± σ):       6.1 ms ±   3.1 ms    [User: 6.0 ms, System: 2.8 ms]
+  Range (min … max):     4.6 ms …  48.8 ms    197 runs
+
+Benchmark #3: arrN {1..2000} | prefixer -r 12 -a 'hi you ' -o '\x00' -l /dev/null
+  Time (mean ± σ):       6.8 ms ±   0.6 ms    [User: 7.5 ms, System: 3.9 ms]
+  Range (min … max):     5.2 ms …   9.3 ms    189 runs
+
+Summary
+  'arrN {1..2000} | rmprefix 12 '' '\x00'' ran
+    1.10 ± 0.57 times faster than 'arrN {1..2000} | prefixer -r 12 -a 'hi you ' -o '\x00' -l /dev/null'
+    1.11 ± 0.57 times faster than 'arrN {1..2000} | prefixer -r 12'
 #+end_example
