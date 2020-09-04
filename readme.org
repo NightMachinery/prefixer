@@ -1,0 +1,24 @@
+#+TITLE: Prefixer.go
+
+#+BEGIN_SRC bash :results verbatim :exports both
+prefixer --help
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+Prefixer is a general tool that allows you to manipulate records stored in a string format.
+
+The string '\x00' will be converted to the null character in all input strings. (No escape mechanism has been implemented for this yet.) This is because there does not seem to be a way to pass this character as an argument on the OS level.
+
+Usage:
+  prefixer [--add-prefix=<add-prefix> --remove-prefix=<rm-prefix> --input-sep=<isep> --output-sep=<osep> --skip-empty]
+  prefixer -h | --help
+
+Options:
+  -a --add-prefix=<add-prefix>  Adds this prefix to the beginning of each record.
+  -r --remove-prefix=<rm-prefix>  Removes this prefix from the beginning of each record.
+  -s --skip-empty  Skip empty records.
+  -i --input-sep=<isep>  Input separator.
+  -o --output-sep=<osep>  Input separator.
+  -h --help     Show this screen.
+#+end_example

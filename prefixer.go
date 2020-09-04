@@ -14,6 +14,8 @@ import (
 func main() {
 	usage := `Prefixer is a general tool that allows you to manipulate records stored in a string format.
 
+The string '\x00' will be converted to the null character in all input strings. (No escape mechanism has been implemented for this yet.) This is because there does not seem to be a way to pass this character as an argument on the OS level.
+
 Usage:
   prefixer [--add-prefix=<add-prefix> --remove-prefix=<rm-prefix> --input-sep=<isep> --output-sep=<osep> --skip-empty] 
   prefixer -h | --help
@@ -29,6 +31,7 @@ Options:
 	debug := os.Getenv("DEBUGME") != ""
 	arguments, _ := docopt.ParseDoc(usage)
 	if debug {
+		log.Println(os.Args)
 		log.Println(arguments)
 	}
 
@@ -40,6 +43,7 @@ Options:
 	var isep string
 	if arguments["--input-sep"] != nil {
 		isep = arguments["--input-sep"].(string)
+		isep = strings.ReplaceAll(isep, `\x00`, "\x00")
 	} else {
 		isep = "\n"
 	}
@@ -47,6 +51,7 @@ Options:
 	var osep string
 	if arguments["--output-sep"] != nil {
 		osep = arguments["--output-sep"].(string)
+		osep = strings.ReplaceAll(osep, `\x00`, "\x00")
 	} else {
 		osep = "\n"
 	}
@@ -54,6 +59,7 @@ Options:
 	var addPrefix string
 	if arguments["--add-prefix"] != nil {
 		addPrefix = arguments["--add-prefix"].(string)
+		addPrefix = strings.ReplaceAll(addPrefix, `\x00`, "\x00")
 	} else {
 		addPrefix = ""
 	}
@@ -64,6 +70,7 @@ Options:
 	var rmPrefix string
 	if arguments["--remove-prefix"] != nil {
 		rmPrefix = arguments["--remove-prefix"].(string)
+		rmPrefix = strings.ReplaceAll(rmPrefix, `\x00`, "\x00")
 	} else {
 		rmPrefix = ""
 	}
