@@ -8,10 +8,15 @@ prefixer --help
 #+begin_example
 Prefixer is a general tool that allows you to manipulate records stored in a string format.
 
-The string '\x00' will be converted to the null character in all input strings. (No escape mechanism has been implemented for this yet.) This is because there does not seem to be a way to pass this character as an argument on the OS level.
+The string '\x00' will be converted to the null character in all input strings. (No escape mechanism has been implemented for this yet.)
+This is because there does not seem to be a way to pass this character as an argument on the OS level.
+
+The separators are by default the newline character '\n'.
+
+When tracking is enabled, the magic string 'PREFIXER_LINENUMBER' in --add-prefix will be replaced with the line number of the current record.
 
 Usage:
-  prefixer [--add-prefix=<add-prefix> --remove-prefix=<rm-prefix> --input-sep=<isep> --output-sep=<osep> --skip-empty]
+  prefixer [--add-prefix=<add-prefix> --remove-prefix=<rm-prefix> --input-sep=<isep> --output-sep=<osep> --skip-empty --location=<loc-file>]
   prefixer -h | --help
 
 Options:
@@ -20,5 +25,6 @@ Options:
   -s --skip-empty  Skip empty records.
   -i --input-sep=<isep>  Input separator.
   -o --output-sep=<osep>  Input separator.
+  -l --location=<loc-file> Enables tracking the starting line number of each record, and prints those numbers to the supplied file (separated by newlines). Use /dev/null to just enable the tracking.
   -h --help     Show this screen.
 #+end_example

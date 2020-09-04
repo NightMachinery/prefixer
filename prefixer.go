@@ -8,16 +8,23 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"strconv"
 	"strings"
+	//"bufio"
 )
 
 func main() {
 	usage := `Prefixer is a general tool that allows you to manipulate records stored in a string format.
 
-The string '\x00' will be converted to the null character in all input strings. (No escape mechanism has been implemented for this yet.) This is because there does not seem to be a way to pass this character as an argument on the OS level.
+The string '\x00' will be converted to the null character in all input strings. (No escape mechanism has been implemented for this yet.)
+This is because there does not seem to be a way to pass this character as an argument on the OS level.
+
+The separators are by default the newline character '\n'.
+
+When tracking is enabled, the magic string 'PREFIXER_LINENUMBER' in --add-prefix will be replaced with the line number of the current record.
 
 Usage:
-  prefixer [--add-prefix=<add-prefix> --remove-prefix=<rm-prefix> --input-sep=<isep> --output-sep=<osep> --skip-empty] 
+  prefixer [--add-prefix=<add-prefix> --remove-prefix=<rm-prefix> --input-sep=<isep> --output-sep=<osep> --skip-empty --location=<loc-file>] 
   prefixer -h | --help
 
 Options:
@@ -26,6 +33,7 @@ Options:
   -s --skip-empty  Skip empty records.
   -i --input-sep=<isep>  Input separator.
   -o --output-sep=<osep>  Input separator.
+  -l --location=<loc-file> Enables tracking the starting line number of each record, and prints those numbers to the supplied file (separated by newlines). Use /dev/null to just enable the tracking.
   -h --help     Show this screen.`
 
 	debug := os.Getenv("DEBUGME") != ""
@@ -66,7 +74,7 @@ Options:
 	if debug {
 		log.Println("a:" + addPrefix)
 	}
-	
+
 	var rmPrefix string
 	if arguments["--remove-prefix"] != nil {
 		rmPrefix = arguments["--remove-prefix"].(string)
@@ -75,17 +83,62 @@ Options:
 		rmPrefix = ""
 	}
 
+	var locationPath string = ""
+	var locationData strings.Builder
+	locationMode := false
+	if arguments["--location"] != nil {
+		locationPath = arguments["--location"].(string)
+		locationMode = true
+	}
+	linesInIsep := strings.Count(isep, "\n")
+	lastLocation := 1
+
 	inBytes, err := ioutil.ReadAll(os.Stdin)
 	if err != nil {
 		log.Fatalln(err.Error())
 	}
 	input := string(inBytes)
 	records := strings.Split(input, isep)
-	for _, rec := range records {
+	recordsLenr := len(records) - 1
+	for i, rec := range records {
+		currAddPrefix := addPrefix
 		rec = strings.TrimPrefix(rec, rmPrefix)
+		//if locationMode { // redundant check
+		if i != 0 {
+			lastLocation += linesInIsep
+		}
+		//}
 		if skipEmpty && rec == "" {
 			continue
 		}
-		Print(addPrefix + rec + osep)
+		if i == recordsLenr {
+			osep = ""
+		}
+		if locationMode {
+			lastLocationStr := strconv.Itoa(lastLocation)
+			locationData.WriteString(lastLocationStr + "\n")
+			currAddPrefix = strings.ReplaceAll(addPrefix, "PREFIXER_LINENUMBER", lastLocationStr)
+			lastLocation += strings.Count(rec, "\n")
+		}
+		Print(currAddPrefix + rec + osep)
+	}
+
+	if locationMode && locationPath != "/dev/null" {
+		err = ioutil.WriteFile(locationPath, []byte(locationData.String()), 0644)
+		check(err)
+		//f, err := os.Create(locationPath)
+		//check(err)
+		//defer f.Close()
+		//w := bufio.NewWriter(f)
+		//_, err = Print(w, locationData.String())
+		//check(err)
+		//err = w.Flush()
+		//check(err)
+	}
+}
+
+func check(err error) {
+	if err != nil {
+		panic(err)
 	}
 }
