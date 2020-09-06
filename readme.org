@@ -167,3 +167,7 @@ Summary
     1.10 ± 0.57 times faster than 'arrN {1..2000} | prefixer -r 12 -a 'hi you ' -o '\x00' -l /dev/null'
     1.11 ± 0.57 times faster than 'arrN {1..2000} | prefixer -r 12'
 #+end_example
+
+* Licenses
+
+Dual-licensed under MIT and GPL v3 or later.
