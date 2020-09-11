@@ -24,8 +24,11 @@ The separators are by default the newline character '\n'.
 When tracking is enabled, the magic string 'PREFIXER_LINENUMBER' in --add-prefix will be replaced with the line number of the current record.
 
 Usage:
-  prefixer [--add-prefix=<add-prefix> --remove-prefix=<rm-prefix> --input-sep=<isep> --output-sep=<osep> --skip-empty --location=<loc-file>] 
+  prefixer [options] 
+  prefixer rm [options --] [<record>...]
   prefixer -h | --help
+
+  rm: will skip the records supplied (i.e., remove those records from the output). This happens after potentially trimming the record.
 
 Options:
   -a --add-prefix=<add-prefix>  Adds this prefix to the beginning of each record.
@@ -33,6 +36,7 @@ Options:
   -s --skip-empty  Skip empty records (after the removal of --remove-prefix).
   -i --input-sep=<isep>  Input record separator.
   -o --output-sep=<osep>  Output record separator.
+  -t --trim  Trims whitespace from around each record before other transformations have been done.
   -l --location=<loc-file>  Enables tracking the starting line number of each record, and prints those numbers to the supplied file (separated by newlines). Use /dev/null to just enable the tracking.
   -h --help  Show this screen.`
 
@@ -41,6 +45,14 @@ Options:
 	if debug {
 		log.Println(os.Args)
 		log.Println(arguments)
+	}
+
+	rmMode := arguments["rm"].(bool)
+	trimMode := arguments["--trim"].(bool)
+	recordsArgs := arguments["<record>"].([]string)
+	recordsArgsSet := make(map[string]struct{}, len(recordsArgs))
+	for _, s := range recordsArgs {
+		recordsArgsSet[s] = struct{}{}
 	}
 
 	var skipEmpty bool = false
@@ -99,9 +111,13 @@ Options:
 	}
 	input := string(inBytes)
 	records := strings.Split(input, isep)
-	recordsLenr := len(records) - 1
+	//recordsLenr := len(records) - 1
+	isFirst := true
 	for i, rec := range records {
 		currAddPrefix := addPrefix
+		if trimMode {
+			rec = strings.Trim(rec, " \t\n\r")
+		}
 		rec = strings.TrimPrefix(rec, rmPrefix)
 		//if locationMode { // redundant check
 		if i != 0 {
@@ -111,16 +127,27 @@ Options:
 		if skipEmpty && rec == "" {
 			continue
 		}
-		if i == recordsLenr {
-			osep = ""
+		if rmMode {
+			_, exists := recordsArgsSet[rec]
+			if exists {
+				continue
+			}
 		}
+		//if i == recordsLenr {
+		//	osep = ""
+		//}
 		if locationMode {
 			lastLocationStr := strconv.Itoa(lastLocation)
 			locationData.WriteString(lastLocationStr + "\n")
 			currAddPrefix = strings.ReplaceAll(addPrefix, "PREFIXER_LINENUMBER", lastLocationStr)
 			lastLocation += strings.Count(rec, "\n")
 		}
-		Print(currAddPrefix + rec + osep)
+		if isFirst {
+			Print(currAddPrefix + rec)
+		} else {
+			Print(osep + currAddPrefix + rec)
+		}
+		isFirst = false
 	}
 
 	if locationMode && locationPath != "/dev/null" {

@@ -23,8 +23,11 @@ The separators are by default the newline character '\n'.
 When tracking is enabled, the magic string 'PREFIXER_LINENUMBER' in --add-prefix will be replaced with the line number of the current record.
 
 Usage:
-  prefixer [--add-prefix=<add-prefix> --remove-prefix=<rm-prefix> --input-sep=<isep> --output-sep=<osep> --skip-empty --location=<loc-file>]
+  prefixer [options]
+  prefixer rm [options --] [<record>...]
   prefixer -h | --help
+
+  rm: will skip the records supplied (i.e., remove those records from the output). This happens after potentially trimming the record.
 
 Options:
   -a --add-prefix=<add-prefix>  Adds this prefix to the beginning of each record.
@@ -32,6 +35,7 @@ Options:
   -s --skip-empty  Skip empty records (after the removal of --remove-prefix).
   -i --input-sep=<isep>  Input record separator.
   -o --output-sep=<osep>  Output record separator.
+  -t --trim  Trims whitespace from around each record before other transformations have been done.
   -l --location=<loc-file>  Enables tracking the starting line number of each record, and prints those numbers to the supplied file (separated by newlines). Use /dev/null to just enable the tracking.
   -h --help  Show this screen.
 #+end_example
@@ -95,6 +99,27 @@ cat /tmp/locationData
 : 1
 : 3
 : 5
+
+#+begin_src bash :results verbatim :exports both
+echo "a,  snake ,d" | prefixer rm -i , -o '-' --trim -r sn a ake  -a "hi "
+#+end_src
+
+#+RESULTS:
+: hi d
+
+#+begin_src bash :results verbatim :exports both
+echo "a,  snake ,d" | prefixer rm -i , -o '-' --trim -r sn -- d  -a "hi "
+#+end_src
+
+#+RESULTS:
+: a-ake
+
+#+begin_src bash :results verbatim :exports both
+echo "a,  snake ,d" | prefixer rm -i , -o '-' -r sn -- d  -a "hi "
+#+end_src
+
+#+RESULTS:
+: a-  snake -d
 
 *** Search and replace literal strings
 #+begin_src bash :results verbatim :exports both
