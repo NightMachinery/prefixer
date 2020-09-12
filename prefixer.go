@@ -111,7 +111,6 @@ Options:
 	}
 	input := string(inBytes)
 	records := strings.Split(input, isep)
-	//recordsLenr := len(records) - 1
 	isFirst := true
 	for i, rec := range records {
 		currAddPrefix := addPrefix
@@ -133,9 +132,6 @@ Options:
 				continue
 			}
 		}
-		//if i == recordsLenr {
-		//	osep = ""
-		//}
 		if locationMode {
 			lastLocationStr := strconv.Itoa(lastLocation)
 			locationData.WriteString(lastLocationStr + "\n")
