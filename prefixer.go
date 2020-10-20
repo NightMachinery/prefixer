@@ -10,6 +10,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"github.com/acarl005/stripansi"
 	//"bufio"
 )
 
@@ -37,6 +38,7 @@ Options:
   -i --input-sep=<isep>  Input record separator.
   -o --output-sep=<osep>  Output record separator.
   -t --trim  Trims whitespace from around each record before other transformations have been done.
+  --rm-ansi  Strip the ANSI color codes before testing for rm records.
   -l --location=<loc-file>  Enables tracking the starting line number of each record, and prints those numbers to the supplied file (separated by newlines). Use /dev/null to just enable the tracking.
   -h --help  Show this screen.`
 
@@ -49,6 +51,7 @@ Options:
 
 	rmMode := arguments["rm"].(bool)
 	trimMode := arguments["--trim"].(bool)
+	rmAnsi := arguments["--rm-ansi"].(bool)
 	recordsArgs := arguments["<record>"].([]string)
 	recordsArgsSet := make(map[string]struct{}, len(recordsArgs))
 	for _, s := range recordsArgs {
@@ -127,7 +130,11 @@ Options:
 			continue
 		}
 		if rmMode {
-			_, exists := recordsArgsSet[rec]
+			rmRec := rec
+			if rmAnsi {
+				rmRec = stripansi.Strip(rmRec)
+			}
+			_, exists := recordsArgsSet[rmRec]
 			if exists {
 				continue
 			}
