@@ -17,7 +17,7 @@ import (
 func main() {
 	usage := `Prefixer is a general tool that allows you to manipulate records stored in a string format.
 
-The string '\x00' will be converted to the null character in all input strings. (No escape mechanism has been implemented for this yet.)
+The string '\x00' will be converted to the null character in all input strings except <record>. (No escape mechanism has been implemented for this yet.)
 This is because there does not seem to be a way to pass this character as an argument on the OS level.
 
 The separators are by default the newline character '\n'.
@@ -39,6 +39,7 @@ Options:
   -o --output-sep=<osep>  Output record separator.
   -t --trim  Trims whitespace from around each record before other transformations have been done.
   --rm-ansi  Strip the ANSI color codes before testing for rm records.
+  --rm-x  Enable \x00 to NUL conversion for <record>.
   -l --location=<loc-file>  Enables tracking the starting line number of each record, and prints those numbers to the supplied file (separated by newlines). Use /dev/null to just enable the tracking.
   -h --help  Show this screen.`
 
@@ -52,9 +53,13 @@ Options:
 	rmMode := arguments["rm"].(bool)
 	trimMode := arguments["--trim"].(bool)
 	rmAnsi := arguments["--rm-ansi"].(bool)
+	rmX := arguments["--rm-x"].(bool)
 	recordsArgs := arguments["<record>"].([]string)
 	recordsArgsSet := make(map[string]struct{}, len(recordsArgs))
 	for _, s := range recordsArgs {
+		if rmX {
+			s = strings.ReplaceAll(s, `\x00`, "\x00")
+		}
 		recordsArgsSet[s] = struct{}{}
 	}
 
