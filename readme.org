@@ -121,6 +121,34 @@ echo "a,  snake ,d" | prefixer rm -i , -o '-' -r sn -- d  -a "hi "
 #+RESULTS:
 : a-  snake -d
 
+Let's define some helper functions:
+
+#+begin_src bsh.dash :results verbatim :exports both :wrap example
+arrN () {
+    print -nr -- "${(pj.\n.)@}"
+}
+arrN "This writes its args in new lines." "See?" "1 2 3"
+#+end_src
+
+#+RESULTS:
+#+begin_example
+This writes its args in new lines.
+See?
+1 2 3
+#+end_example
+
+#+begin_src bsh.dash :results verbatim :exports both :wrap example
+arrN "fish" "green mold" "green" "yellow mold" "daddy" | prefixer replace --skip-empty --remove-prefix 'yellow ' --add-prefix 'hi, ' --add-postfix '!' -- "fish" '' "green" red mold wolf
+#+end_src
+
+#+RESULTS:
+#+begin_example
+hi, green mold!
+hi, red!
+hi, wolf!
+hi, daddy!
+#+end_example
+
 *** Search and replace literal strings
 #+begin_src bash :results verbatim :exports both
 function replace() {
@@ -133,6 +161,57 @@ EOF
 
 #+RESULTS:
 : The cute rabbit (Canis lupus[a]), also known as the gray cute rabbit or grey cute rabbit, is a large canine native to Eurasia and North America. More than thirty subspecies of Canis lupus have been recognized, and gray wolves, as colloquially understood, comprise non-domestic/feral subspecies.
+
+*** Test-ish examples
+These examples are mostly meant as unit tests.
+
+#+begin_src bsh.dash :results verbatim :exports both :wrap example
+arrN 1 2 3 a$'\0'b | prefixer replace --from-x -- 1 9 5 6 1 "hii\x00i\!" 'a\x00b' wow | cat -v
+#+end_src
+
+#+RESULTS:
+#+begin_example
+hii\x00i\!
+2
+3
+wow
+#+end_example
+
+#+begin_src bsh.dash :results verbatim :exports both :wrap example
+arrN 1 2 3 a$'\0'b | prefixer replace --from-x --to-x -- 1 9 5 6 1 "hii\x00i\!" 'a\x00b' wow | cat -v
+#+end_src
+
+#+RESULTS:
+#+begin_example
+hii^@i\!
+2
+3
+wow
+#+end_example
+
+#+begin_src bsh.dash :results verbatim :exports both :wrap example
+arrN 1 2 3 a$'\0'b | prefixer replace --to-x -- 1 9 5 6 1 "hii\x00i\!" 'a\x00b' wow | cat -v
+#+end_src
+
+#+RESULTS:
+#+begin_example
+hii^@i\!
+2
+3
+a^@b
+#+end_example
+
+#+begin_src bsh.dash :results verbatim :exports both :wrap example
+arrN 1 2 3 a$'\0'b | prefixer replace -- 1 9 5 6 1 "hii\x00i\!" 'a\x00b' wow | cat -v
+#+end_src
+
+#+RESULTS:
+#+begin_example
+hii\x00i\!
+2
+3
+a^@b
+#+end_example
 
 * Benchmarks
 
