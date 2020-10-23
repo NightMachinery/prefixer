@@ -15,27 +15,35 @@ prefixer --help
 #+begin_example
 Prefixer is a general tool that allows you to manipulate records stored in a string format.
 
-The string '\x00' will be converted to the null character in all input strings. (No escape mechanism has been implemented for this yet.)
+The string '\x00' will be converted to the null character in <add-prefix>, <add-postfix>, <rm-prefix>, <isep>, and <osep>. (No escape mechanism has been implemented for them yet.)
 This is because there does not seem to be a way to pass this character as an argument on the OS level.
 
 The separators are by default the newline character '\n'.
 
-When tracking is enabled, the magic string 'PREFIXER_LINENUMBER' in --add-prefix will be replaced with the line number of the current record.
+When tracking is enabled, the magic string 'PREFIXER_LINENUMBER' in <add-prefix>, <add-postfix>, and <replace> will be replaced with the line number of the current record.
 
 Usage:
   prefixer [options]
   prefixer rm [options --] [<record>...]
+  prefixer replace [options --] [(<from> <to>)...]
   prefixer -h | --help
 
   rm: will skip the records supplied (i.e., remove those records from the output). This happens after potentially trimming the record.
 
 Options:
   -a --add-prefix=<add-prefix>  Adds this prefix to the beginning of each record.
+  -p --add-postfix=<add-postfix>  Adds this to the end of each record.
   -r --remove-prefix=<rm-prefix>  Removes this prefix from the beginning of each record.
   -s --skip-empty  Skip empty records (after the removal of --remove-prefix).
   -i --input-sep=<isep>  Input record separator.
   -o --output-sep=<osep>  Output record separator.
   -t --trim  Trims whitespace from around each record before other transformations have been done.
+  --process-include=<process-include>  Ranges of the input records to process. This uses fzf's range syntax. Unprocessed records will be output as they are.
+  --rm-ansi  Strip the ANSI color codes from input records when testing for equality in rm or replace.
+  --rm-x  Enable \x00 to NUL conversion for <record>.
+  --from-x  Enable \x00 to NUL conversion for <from>.
+  --to-x  Enable \x00 to NUL conversion for <to>.
+  --replace=<replace>  Replace all records without matches in <from> records with <replace>. '$1' will be expanded to the original record.
   -l --location=<loc-file>  Enables tracking the starting line number of each record, and prints those numbers to the supplied file (separated by newlines). Use /dev/null to just enable the tracking.
   -h --help  Show this screen.
 #+end_example
@@ -135,6 +143,24 @@ arrN "This writes its args in new lines." "See?" "1 2 3"
 This writes its args in new lines.
 See?
 1 2 3
+#+end_example
+
+#+begin_src bsh.dash :results verbatim :exports both :wrap example
+arrN red orange yellow green blue purple gray black aqua teal | prefixer --process-include 2..-4,-1 --add-prefix '<' --add-postfix '>'
+#+end_src
+
+#+RESULTS:
+#+begin_example
+red
+<orange>
+<yellow>
+<green>
+<blue>
+<purple>
+<gray>
+black
+aqua
+<teal>
 #+end_example
 
 #+begin_src bsh.dash :results verbatim :exports both :wrap example

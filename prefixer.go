@@ -1,18 +1,130 @@
 /// 2>/dev/null ; exec gorun "$0" "$@"
+// Some code forked from fzf. See https://github.com/junegunn/fzf/blob/master/LICENSE
 
 package main
 
 import (
 	. "fmt"
+	"github.com/acarl005/stripansi"
 	"github.com/docopt/docopt-go"
 	"io/ioutil"
 	"log"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
-	"github.com/acarl005/stripansi"
 	//"bufio"
 )
+
+///
+const rangeEllipsis = 0
+
+// Range represents nth-expression
+type Range struct {
+	begin int
+	end   int
+}
+
+func errorExit(msg string) {
+	os.Stderr.WriteString(msg + "\n")
+	os.Exit(2)
+}
+func newRange(begin int, end int) Range {
+	if begin == 1 {
+		begin = rangeEllipsis
+	}
+	if end == -1 {
+		end = rangeEllipsis
+	}
+	return Range{begin, end}
+}
+
+// ParseRange parses nth-expression and returns the corresponding Range object
+func ParseRange(str *string) (Range, bool) {
+	if (*str) == ".." {
+		return newRange(rangeEllipsis, rangeEllipsis), true
+	} else if strings.HasPrefix(*str, "..") {
+		end, err := strconv.Atoi((*str)[2:])
+		if err != nil || end == 0 {
+			return Range{}, false
+		}
+		return newRange(rangeEllipsis, end), true
+	} else if strings.HasSuffix(*str, "..") {
+		begin, err := strconv.Atoi((*str)[:len(*str)-2])
+		if err != nil || begin == 0 {
+			return Range{}, false
+		}
+		return newRange(begin, rangeEllipsis), true
+	} else if strings.Contains(*str, "..") {
+		ns := strings.Split(*str, "..")
+		if len(ns) != 2 {
+			return Range{}, false
+		}
+		begin, err1 := strconv.Atoi(ns[0])
+		end, err2 := strconv.Atoi(ns[1])
+		if err1 != nil || err2 != nil || begin == 0 || end == 0 {
+			return Range{}, false
+		}
+		return newRange(begin, end), true
+	}
+
+	n, err := strconv.Atoi(*str)
+	if err != nil || n == 0 {
+		return Range{}, false
+	}
+	return newRange(n, n), true
+}
+func splitNth(str string) []Range {
+	if match, _ := regexp.MatchString("^[0-9,-.]+$", str); !match {
+		errorExit("invalid format: " + str)
+	}
+
+	tokens := strings.Split(str, ",")
+	ranges := make([]Range, len(tokens))
+	for idx, s := range tokens {
+		r, ok := ParseRange(&s)
+		if !ok {
+			errorExit("invalid format: " + str)
+		}
+		ranges[idx] = r
+	}
+	return ranges
+}
+
+///
+
+// @todo Merge tokens according to the ranges given
+//func mergeTokens(tokens []string, withNth []Range) []string {
+//	transTokens := make([]string, len(withNth))
+//	numTokens := len(tokens)
+//	for idx, r := range withNth {
+//
+//	}
+//}
+
+func rangesIn(ranges []Range, totalLen int, target int) bool {
+	target += 1 // one-based indexing
+	for _, r := range ranges {
+		beg := r.begin
+		if beg == 0 {
+			beg = 1
+		}
+		if beg < 0 {
+			beg += totalLen + 1
+		}
+		end := r.end
+		if end == 0 {
+			end = -1
+		}
+		if end < 0 {
+			end += totalLen + 1
+		}
+		if (target <= end) && (target >= beg) {
+			return true
+		}
+	}
+	return false
+}
 
 func main() {
 	usage := `Prefixer is a general tool that allows you to manipulate records stored in a string format.
@@ -22,7 +134,7 @@ This is because there does not seem to be a way to pass this character as an arg
 
 The separators are by default the newline character '\n'.
 
-When tracking is enabled, the magic string 'PREFIXER_LINENUMBER' in <add-prefix> and <add-postfix> will be replaced with the line number of the current record.
+When tracking is enabled, the magic string 'PREFIXER_LINENUMBER' in <add-prefix>, <add-postfix>, and <replace> will be replaced with the line number of the current record.
 
 Usage:
   prefixer [options] 
@@ -40,10 +152,12 @@ Options:
   -i --input-sep=<isep>  Input record separator.
   -o --output-sep=<osep>  Output record separator.
   -t --trim  Trims whitespace from around each record before other transformations have been done.
+  --process-include=<process-include>  Ranges of the input records to process. This uses fzf's range syntax. Unprocessed records will be output as they are.
   --rm-ansi  Strip the ANSI color codes from input records when testing for equality in rm or replace.
   --rm-x  Enable \x00 to NUL conversion for <record>.
   --from-x  Enable \x00 to NUL conversion for <from>.
   --to-x  Enable \x00 to NUL conversion for <to>.
+  --replace=<replace>  Replace all records without matches in <from> records with <replace>. '$1' will be expanded to the original record.
   -l --location=<loc-file>  Enables tracking the starting line number of each record, and prints those numbers to the supplied file (separated by newlines). Use /dev/null to just enable the tracking.
   -h --help  Show this screen.`
 
@@ -87,6 +201,20 @@ Options:
 	var skipEmpty bool = false
 	if arguments["--skip-empty"] != nil {
 		skipEmpty = arguments["--skip-empty"].(bool)
+	}
+
+	var processInclude []Range
+	if arguments["--process-include"] != nil {
+		processInclude = splitNth(arguments["--process-include"].(string))
+	} else {
+		//processInclude = []Range{newRange(0, 0)}
+	}
+
+	var rep string
+	if arguments["--replace"] != nil {
+		rep = arguments["--replace"].(string)
+	} else {
+		rep = ""
 	}
 
 	var isep string
@@ -150,13 +278,19 @@ Options:
 	records := strings.Split(input, isep)
 	isFirst := true
 	for i, rec := range records {
+		processThis := len(processInclude) == 0 || rangesIn(processInclude, len(records), i)
 		recLineCount := strings.Count(rec, "\n") // We need to save this before changing <rec>
 		currAddPrefix := addPrefix
 		currAddPostfix := addPostfix
-		if trimMode {
-			rec = strings.Trim(rec, " \t\n\r")
+		if processThis {
+			if trimMode {
+				rec = strings.Trim(rec, " \t\n\r")
+			}
+			rec = strings.TrimPrefix(rec, rmPrefix)
+		} else {
+			currAddPrefix = ""
+			currAddPostfix = ""
 		}
-		rec = strings.TrimPrefix(rec, rmPrefix)
 		//if locationMode { // redundant check
 		if i != 0 {
 			lastLocation += linesInIsep
@@ -165,7 +299,7 @@ Options:
 		if skipEmpty && rec == "" {
 			continue
 		}
-		if rmMode {
+		if processThis && rmMode {
 			rmRec := rec
 			if rmAnsi {
 				rmRec = stripansi.Strip(rmRec)
@@ -175,14 +309,15 @@ Options:
 				continue
 			}
 		}
+		lastLocationStr := "PREFIXER_LINENUMBER"
 		if locationMode {
-			lastLocationStr := strconv.Itoa(lastLocation)
+			lastLocationStr = strconv.Itoa(lastLocation)
 			locationData.WriteString(lastLocationStr + "\n")
 			currAddPrefix = strings.ReplaceAll(currAddPrefix, "PREFIXER_LINENUMBER", lastLocationStr)
 			currAddPostfix = strings.ReplaceAll(currAddPostfix, "PREFIXER_LINENUMBER", lastLocationStr)
 			lastLocation += recLineCount
 		}
-		if replaceMode {
+		if processThis && replaceMode {
 			rmRec := rec
 			if rmAnsi {
 				rmRec = stripansi.Strip(rmRec)
@@ -190,9 +325,12 @@ Options:
 			to, exists := fromTo[rmRec]
 			if exists {
 				rec = to
-				if skipEmpty && rec == "" {
-					continue
-				}
+			} else if rep != "" {
+				repTmp := strings.ReplaceAll(rep, "PREFIXER_LINENUMBER", lastLocationStr)
+				rec = strings.ReplaceAll(repTmp, `$1`, rec)
+			}
+			if skipEmpty && rec == "" {
+				continue
 			}
 		}
 		if isFirst {
