@@ -175,6 +175,16 @@ hi, wolf!
 hi, daddy!
 #+end_example
 
+Note that in the following example, the last record is =IV\n= and not =IV=, and so it is not replaced.
+#+begin_src bsh.dash :results verbatim :exports both :wrap example
+echo a IV b c IV | prefixer replace -i ' ' -o ' ' IV 4
+#+end_src
+
+#+RESULTS:
+#+begin_example
+a 4 b c IV
+#+end_example
+
 *** Search and replace literal strings
 #+begin_src bash :results verbatim :exports both
 function replace() {

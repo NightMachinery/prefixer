@@ -279,6 +279,7 @@ Options:
 	isFirst := true
 	for i, rec := range records {
 		processThis := len(processInclude) == 0 || rangesIn(processInclude, len(records), i)
+		// log.Println("::" + rec + "::\n")
 		recLineCount := strings.Count(rec, "\n") // We need to save this before changing <rec>
 		currAddPrefix := addPrefix
 		currAddPostfix := addPostfix
