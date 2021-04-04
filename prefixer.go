@@ -147,6 +147,7 @@ Usage:
 Options:
   -a --add-prefix=<add-prefix>  Adds this prefix to the beginning of each record.
   -p --add-postfix=<add-postfix>  Adds this to the end of each record.
+  -c --case-sensitivity=<case-sensitivity>  Sets the case sensitivity for --remove-prefix: no, yes. (Default: yes)
   -r --remove-prefix=<rm-prefix>  Removes this prefix from the beginning of each record.
   -s --skip-empty  Skip empty records (after the removal of --remove-prefix).
   -i --input-sep=<isep>  Input record separator.
@@ -252,6 +253,13 @@ Options:
 		addPostfix = ""
 	}
 
+	var caseSen string
+	if arguments["--case-sensitivity"] != nil {
+		caseSen = arguments["--case-sensitivity"].(string)
+	} else {
+		caseSen = "yes"
+	}
+
 	var rmPrefix string
 	if arguments["--remove-prefix"] != nil {
 		rmPrefix = arguments["--remove-prefix"].(string)
@@ -287,7 +295,13 @@ Options:
 			if trimMode {
 				rec = strings.Trim(rec, " \t\n\r")
 			}
-			rec = strings.TrimPrefix(rec, rmPrefix)
+			if caseSen == "yes" {
+				rec = strings.TrimPrefix(rec, rmPrefix)
+			} else {
+				if strings.HasPrefix(strings.ToLower(rec), strings.ToLower(rmPrefix)) {
+					rec = rec[len(rmPrefix):]
+				}
+			}
 		} else {
 			currAddPrefix = ""
 			currAddPostfix = ""
