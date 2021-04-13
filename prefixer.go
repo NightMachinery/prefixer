@@ -13,6 +13,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"reflect"
 	//"bufio"
 )
 
@@ -145,6 +146,7 @@ Usage:
   rm: will skip the records supplied (i.e., remove those records from the output). This happens after potentially trimming the record.
 
 Options:
+  --tac  Reverses the order of output records, ala GNU tac.
   -a --add-prefix=<add-prefix>  Adds this prefix to the beginning of each record.
   -p --add-postfix=<add-postfix>  Adds this to the end of each record.
   -c --case-sensitivity=<case-sensitivity>  Sets the case sensitivity for --remove-prefix: no, yes. (Default: yes)
@@ -170,6 +172,7 @@ Options:
 	}
 
 	rmMode := arguments["rm"].(bool)
+	reverseMode := arguments["--tac"].(bool)
 	trimMode := arguments["--trim"].(bool)
 	rmAnsi := arguments["--rm-ansi"].(bool)
 	rmX := arguments["--rm-x"].(bool)
@@ -284,7 +287,7 @@ Options:
 	}
 	input := string(inBytes)
 	records := strings.Split(input, isep)
-	isFirst := true
+	outputRecords := make([]string, 0)
 	for i, rec := range records {
 		processThis := len(processInclude) == 0 || rangesIn(processInclude, len(records), i)
 		// log.Println("::" + rec + "::\n")
@@ -348,10 +351,19 @@ Options:
 				continue
 			}
 		}
+		outputRecords = append(outputRecords, currAddPrefix + rec + currAddPostfix)
+	}
+
+	if reverseMode {
+		reverseAny(outputRecords)
+	}
+
+	isFirst := true
+	for _, rec := range outputRecords {
 		if isFirst {
-			Print(currAddPrefix + rec + currAddPostfix)
+			Print(rec)
 		} else {
-			Print(osep + currAddPrefix + rec + currAddPostfix)
+			Print(osep + rec)
 		}
 		isFirst = false
 	}
@@ -359,17 +371,16 @@ Options:
 	if locationMode && locationPath != "/dev/null" {
 		err = ioutil.WriteFile(locationPath, []byte(locationData.String()), 0644)
 		check(err)
-		//f, err := os.Create(locationPath)
-		//check(err)
-		//defer f.Close()
-		//w := bufio.NewWriter(f)
-		//_, err = Print(w, locationData.String())
-		//check(err)
-		//err = w.Flush()
-		//check(err)
 	}
 }
 
+func reverseAny(s interface{}) {
+    n := reflect.ValueOf(s).Len()
+    swap := reflect.Swapper(s)
+    for i, j := 0, n-1; i < j; i, j = i+1, j-1 {
+        swap(i, j)
+    }
+}
 func check(err error) {
 	if err != nil {
 		panic(err)
