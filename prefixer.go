@@ -155,7 +155,8 @@ Options:
   -i --input-sep=<isep>  Input record separator.
   -o --output-sep=<osep>  Output record separator.
   -t --trim  Trims whitespace from around each record before other transformations have been done.
-  --process-include=<process-include>  Ranges of the input records to process. This uses fzf's range syntax. Unprocessed records will be output as they are.
+  --process-include=<process-include>  Ranges of the input records to process. This uses fzf's range syntax. Unprocessed records will be output as they are. The empty elements are included in the count even if you specify --skip-empty.
+  -x --included-only  Exclude everything that is not explicitly included by --process-include.
   --rm-ansi  Strip the ANSI color codes from input records when testing for equality in rm or replace.
   --rm-x  Enable \x00 to NUL conversion for <record>.
   --from-x  Enable \x00 to NUL conversion for <from>.
@@ -213,6 +214,7 @@ Options:
 	} else {
 		//processInclude = []Range{newRange(0, 0)}
 	}
+	includedOnly := arguments["--included-only"].(bool)
 
 	var rep string
 	if arguments["--replace"] != nil {
@@ -289,11 +291,32 @@ Options:
 	records := strings.Split(input, isep)
 	outputRecords := make([]string, 0)
 	for i, rec := range records {
-		processThis := len(processInclude) == 0 || rangesIn(processInclude, len(records), i)
 		// log.Println("::" + rec + "::\n")
-		recLineCount := strings.Count(rec, "\n") // We need to save this before changing <rec>
+
 		currAddPrefix := addPrefix
 		currAddPostfix := addPostfix
+
+		recLineCount := strings.Count(rec, "\n") // We need to save this before changing <rec>
+
+		lastLocationStr := "PREFIXER_LINENUMBER"
+		if locationMode {
+			if i != 0 {
+				lastLocation += linesInIsep
+			}
+			lastLocation += recLineCount
+
+			lastLocationStr = strconv.Itoa(lastLocation)
+			locationData.WriteString(lastLocationStr + "\n")
+			currAddPrefix = strings.ReplaceAll(currAddPrefix, "PREFIXER_LINENUMBER", lastLocationStr)
+			currAddPostfix = strings.ReplaceAll(currAddPostfix, "PREFIXER_LINENUMBER", lastLocationStr)
+		}
+
+		processThis := len(processInclude) == 0 || rangesIn(processInclude, len(records), i)
+
+		if includedOnly && ! processThis {
+			continue
+		}
+
 		if processThis {
 			if trimMode {
 				rec = strings.Trim(rec, " \t\n\r")
@@ -309,14 +332,11 @@ Options:
 			currAddPrefix = ""
 			currAddPostfix = ""
 		}
-		//if locationMode { // redundant check
-		if i != 0 {
-			lastLocation += linesInIsep
-		}
-		//}
-		if skipEmpty && rec == "" {
+
+		if (skipEmpty && rec == "") {
 			continue
 		}
+
 		if processThis && rmMode {
 			rmRec := rec
 			if rmAnsi {
@@ -327,14 +347,7 @@ Options:
 				continue
 			}
 		}
-		lastLocationStr := "PREFIXER_LINENUMBER"
-		if locationMode {
-			lastLocationStr = strconv.Itoa(lastLocation)
-			locationData.WriteString(lastLocationStr + "\n")
-			currAddPrefix = strings.ReplaceAll(currAddPrefix, "PREFIXER_LINENUMBER", lastLocationStr)
-			currAddPostfix = strings.ReplaceAll(currAddPostfix, "PREFIXER_LINENUMBER", lastLocationStr)
-			lastLocation += recLineCount
-		}
+
 		if processThis && replaceMode {
 			rmRec := rec
 			if rmAnsi {
@@ -375,11 +388,11 @@ Options:
 }
 
 func reverseAny(s interface{}) {
-    n := reflect.ValueOf(s).Len()
-    swap := reflect.Swapper(s)
-    for i, j := 0, n-1; i < j; i, j = i+1, j-1 {
-        swap(i, j)
-    }
+	n := reflect.ValueOf(s).Len()
+	swap := reflect.Swapper(s)
+	for i, j := 0, n-1; i < j; i, j = i+1, j-1 {
+		swap(i, j)
+	}
 }
 func check(err error) {
 	if err != nil {

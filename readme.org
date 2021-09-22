@@ -41,6 +41,7 @@ Options:
   -o --output-sep=<osep>  Output record separator.
   -t --trim  Trims whitespace from around each record before other transformations have been done.
   --process-include=<process-include>  Ranges of the input records to process. This uses fzf's range syntax. Unprocessed records will be output as they are.
+  -x --included-only  Exclude everything that is included by --process-include.
   --rm-ansi  Strip the ANSI color codes from input records when testing for equality in rm or replace.
   --rm-x  Enable \x00 to NUL conversion for <record>.
   --from-x  Enable \x00 to NUL conversion for <from>.
