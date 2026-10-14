@@ -37,6 +37,7 @@ Options:
   -c --case-sensitivity=<case-sensitivity>  Sets the case sensitivity for --remove-prefix: no, yes. (Default: yes)
   -r --remove-prefix=<rm-prefix>  Removes this prefix from the beginning of each record.
   -s --skip-empty  Skip empty records (after the removal of --remove-prefix).
+  --skip-last-empty-record=<bool>  Skip one final empty input record before processing. Bare flag means true. [default: true]
   -i --input-sep=<isep>  Input record separator.
   -o --output-sep=<osep>  Output record separator.
   -t --trim  Trims whitespace from around each record before other transformations have been done.
@@ -52,6 +53,12 @@ Options:
 #+end_example
 
 ** Examples
+
+By default, =--skip-last-empty-record= removes one final empty input record
+before transformations, range selection, and location tracking. Interior empty
+records remain intact. Empty input produces no records. Use
+=--skip-last-empty-record=false= to restore the previous behavior. The bare flag
+and =--skip-last-empty-record=true= explicitly enable the default behavior.
 
 #+begin_src bash :results verbatim :exports both
 echo "Green Paint, Red Paint, Yellow Paint" | prefixer -i ", " -r "Green " -a "Cute "
@@ -103,7 +110,6 @@ Red Paint
 3: Cute Red Paint
 4: Cute
 5: Cute      Yellow Paint
-6: Cute
 #+end_example
 
 #+begin_src bash :results verbatim :exports both

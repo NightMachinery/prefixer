@@ -10,14 +10,14 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
-	"reflect"
 	//"bufio"
 )
 
-///
+// /
 const rangeEllipsis = 0
 
 // Range represents nth-expression
@@ -152,6 +152,7 @@ Options:
   -c --case-sensitivity=<case-sensitivity>  Sets the case sensitivity for --remove-prefix: no, yes. (Default: yes)
   -r --remove-prefix=<rm-prefix>  Removes this prefix from the beginning of each record.
   -s --skip-empty  Skip empty records (after the removal of --remove-prefix).
+  --skip-last-empty-record=<bool>  Skip one final empty input record before processing. Bare flag means true. [default: true]
   -i --input-sep=<isep>  Input record separator.
   -o --output-sep=<osep>  Output record separator.
   -t --trim  Trims whitespace from around each record before other transformations have been done.
@@ -166,7 +167,24 @@ Options:
   -h --help  Show this screen.`
 
 	debug := os.Getenv("DEBUGME") != ""
-	arguments, _ := docopt.ParseDoc(usage)
+	// Docopt requires a value; also accept the usual bare boolean flag.
+	args := append([]string(nil), os.Args[1:]...)
+	for i, arg := range args {
+		if arg == "--" {
+			break
+		}
+		if arg == "--skip-last-empty-record" {
+			args[i] = "--skip-last-empty-record=true"
+		}
+	}
+	arguments, err := docopt.ParseArgs(usage, args, "")
+	if err != nil {
+		errorExit(err.Error())
+	}
+	skipLastEmptyRecord, err := strconv.ParseBool(arguments["--skip-last-empty-record"].(string))
+	if err != nil {
+		errorExit("invalid value for --skip-last-empty-record: expected true or false")
+	}
 	if debug {
 		log.Println(os.Args)
 		log.Println(arguments)
@@ -289,6 +307,9 @@ Options:
 	}
 	input := string(inBytes)
 	records := strings.Split(input, isep)
+	if skipLastEmptyRecord && len(records) > 0 && records[len(records)-1] == "" {
+		records = records[:len(records)-1]
+	}
 	outputRecords := make([]string, 0)
 	for i, rec := range records {
 		// log.Println("::" + rec + "::\n")
@@ -313,7 +334,7 @@ Options:
 
 		processThis := len(processInclude) == 0 || rangesIn(processInclude, len(records), i)
 
-		if includedOnly && ! processThis {
+		if includedOnly && !processThis {
 			continue
 		}
 
@@ -333,7 +354,7 @@ Options:
 			currAddPostfix = ""
 		}
 
-		if (skipEmpty && rec == "") {
+		if skipEmpty && rec == "" {
 			continue
 		}
 
@@ -364,7 +385,7 @@ Options:
 				continue
 			}
 		}
-		outputRecords = append(outputRecords, currAddPrefix + rec + currAddPostfix)
+		outputRecords = append(outputRecords, currAddPrefix+rec+currAddPostfix)
 	}
 
 	if reverseMode {
